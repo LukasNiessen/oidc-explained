@@ -39,6 +39,17 @@ Suppose LinkedIn wants users to log in with their Google account to authenticate
    - Google responds with an **access token and a JWT**
 8. **Finished.** LinkedIn now uses the JWT for authentication and can use the access token to get more info about John's Google account
 
+---
+
+**Question:**
+_Why not already send the JWT and access token in step 6?_
+
+**Answer:** To make sure that the requester is actually LinkedIn. So far, all requests to Google have come from the user's browser, with only the client_id identifying LinkedIn. Since the client_id isn't secret and could be guessed by an attacker, Google can't know for sure that it's actually LinkedIn behind this.
+
+Authorization servers (Google in this example) use predefined URIs. So LinkedIn needs to specify predefined URIs when setting up their Google API. And if the given redirect_uri is not among the predefined ones, then Google rejects the request. See here: https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.2.2
+
+Additionally, LinkedIn includes the client_secret in the server-to-server request. This, however, is mainly intended to protect against the case that somehow intercepted the one time code, so he can't use it.
+
 ## Addendum
 
 In step 8 LinkedIn also verifies the JWT's signature and claims. Usually in OIDC we use asymmetric encryption (Google does for example) to sign the JWT. The advantage of asymmetric encryption is that the JWT can be verified by anyone by using the public key, including LinkedIn.
