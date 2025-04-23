@@ -2,8 +2,9 @@ const express = require("express");
 const axios = require("axios");
 const sqlite3 = require("sqlite3").verbose();
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken"); // Still using jwt for token verification
+const jwt = require("jsonwebtoken");
 const session = require("express-session");
+const jwkToPem = require("jwk-to-pem");
 
 const app = express();
 const db = new sqlite3.Database(":memory:");
@@ -31,7 +32,7 @@ db.serialize(() => {
 const CLIENT_ID = process.env.OIDC_CLIENT_ID;
 const CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET;
 const REDIRECT_URI = "https://example.com/oidc/callback";
-const ISSUER_URL = "https://accounts.google.com"; // Example OIDC provider
+const ISSUER_URL = "https://accounts.google.com";
 
 // OIDC discovery endpoints cache
 let oidcConfig = null;
@@ -54,7 +55,7 @@ async function fetchOIDCConfiguration() {
 
 // Function to generate and verify PKCE challenge
 function generatePKCE() {
-  // Generate code verifier (random string between 43-128 chars)
+  // Generate code verifier
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
 
   // Generate code challenge (SHA256 hash of verifier, base64url encoded)
@@ -69,7 +70,7 @@ function generatePKCE() {
   return { codeVerifier, codeChallenge };
 }
 
-// Function to fetch JWKS (JSON Web Key Set)
+// Function to fetch JWKS
 async function fetchJWKS() {
   const config = await fetchOIDCConfiguration();
   const response = await axios.get(config.jwks_uri);
@@ -92,13 +93,7 @@ async function verifyIdToken(idToken) {
   }
 
   // Format key for JWT verification
-  // This is a simplified approach, in production you'd use a more robust method
-  // to convert JWK to PEM format
-  const publicKey = {
-    key: signingKey.n,
-    e: signingKey.e,
-    kty: signingKey.kty,
-  };
+  const publicKey = jwkToPem(signingKey);
 
   return new Promise((resolve, reject) => {
     jwt.verify(
@@ -158,7 +153,7 @@ app.get("/oidc/callback", async (req, res) => {
   const { code, state } = req.query;
   const { codeVerifier, state: storedState, nonce: storedNonce } = req.session;
 
-  // Verify state to prevent CSRF
+  // Verify state
   if (state !== storedState) {
     return res.status(403).send("Invalid state parameter");
   }
@@ -190,7 +185,7 @@ app.get("/oidc/callback", async (req, res) => {
     // Verify ID token
     const claims = await verifyIdToken(id_token);
 
-    // Verify nonce to prevent replay attacks
+    // Verify nonce
     if (claims.nonce !== storedNonce) {
       return res.status(403).send("Invalid nonce");
     }

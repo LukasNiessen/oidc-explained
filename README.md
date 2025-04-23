@@ -12,10 +12,10 @@ I will provide a super short and simple summary, a more detailed one and even a 
 - Now the usual OAuth process takes place
   - John authorizes us to get data about his Google profile
     - E.g. his email, profile picture, name and user id
-- **Important**: Google not only sends LinkedIn the access token as specified in OAuth, **but also a JWT.**
-- LinkedIn now uses the JWT for authentication in the usual way
+- **Important**: Now Google not only sends LinkedIn the access token as specified in OAuth, **but also a JWT.**
+- LinkedIn uses the JWT for authentication in the usual way
   - E.g. John's browser saves the JWT in the cookies and sends it along every request he makes
-  - LinkedIn receives the token, verifies it, and knows "ah, this is indeed John"
+  - LinkedIn receives the token, verifies it, and sees "_ah, this is indeed John_"
 
 ## More Detailed Summary
 
@@ -27,13 +27,16 @@ Suppose LinkedIn wants users to log in with their Google account to authenticate
 3. LinkedIn redirects to Google’s OIDC authorization endpoint:
    https://accounts.google.com/o/oauth2/auth?client_id=...&redirect_uri=...&scope=openid%20profile%20email&response_type=code
    - As you see, LinkedIn passes client_id, redirect_id, scope and response_type as URL params
-   - **Important:** scope includes openid (mandatory for OIDC) plus profile and email. It's no longer arbitrary as in OAuth.
+     - **Important:** scope must include openid
+     - profile and email are optional but commonly used
    - redirect_uri is where Google sends the response.
 4. John logs into Google
 5. Google asks: '_LinkedIn wants to access your Google Account_', John clicks '_Allow_'
-6. Google redirects to LinkedIn’s redirect_uri with a one-time authorization code:
+6. Google redirects to the specified redirect_uri with a one-time authorization code. For example:
    https://linkedin.com/oidc/callback?code=one_time_code_xyz
-7. LinkedIn makes a server-to-server request and passes the one-time code, client_id, and client_secret **to get an access token and an ID token (a JWT) from Google.**
+7. LinkedIn makes a server-to-server request to Google
+   - It passes the one-time code, client_id, and client_secret in the request body
+   - Google responds with an **access token and a JWT**
 8. **Finished.** LinkedIn now uses the JWT for authentication and can use the access token to get more info about John's Google account
 
 ## Addendum
@@ -51,6 +54,11 @@ As we saw, OIDC extends OAuth 2.0. This guide is incomplete, so here are just a 
 ### ID Token
 
 The ID token is the JWT. It contains user identity data (e.g., sub for user ID, name, email). It's signed by the IdP (Identity provider, in our case Google) and verified by the client (in our case LinkedIn). The JWT is used for authentication. Hence, while OAuth is for authorization, OIDC is authentication.
+
+Don't confuse Access Token and ID Token:
+
+- Access Token: Used to call Google APIs (e.g. to get more info about the user)
+- ID Token: Used purely for authentication (so we know the user actually is John)
 
 ### Discovery Document
 
@@ -78,15 +86,18 @@ To prevent replay attacks, LinkedIn includes a random nonce in the authorization
 
 ## Code Example
 
-Below is a standalone Node.js example using Express to handle OIDC login with Google, storing user data in a SQLite database. Amongst other libraries we use openid-client as it simplies the entire process for us quite a bit.
+Below is a standalone Node.js example using Express to handle OIDC login with Google, storing user data in a SQLite database.
+
+Please not that this is just example code and some things are missing or can be improved. I also on purpose did not use the library openid-client to make the process more visible. In production you would want to use openid-client or a similar library.
 
 ```javascript
 const express = require("express");
 const axios = require("axios");
 const sqlite3 = require("sqlite3").verbose();
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken"); // Still using jwt for token verification
+const jwt = require("jsonwebtoken");
 const session = require("express-session");
+const jwkToPem = require("jwk-to-pem");
 
 const app = express();
 const db = new sqlite3.Database(":memory:");
@@ -114,7 +125,7 @@ db.serialize(() => {
 const CLIENT_ID = process.env.OIDC_CLIENT_ID;
 const CLIENT_SECRET = process.env.OIDC_CLIENT_SECRET;
 const REDIRECT_URI = "https://example.com/oidc/callback";
-const ISSUER_URL = "https://accounts.google.com"; // Example OIDC provider
+const ISSUER_URL = "https://accounts.google.com";
 
 // OIDC discovery endpoints cache
 let oidcConfig = null;
@@ -137,7 +148,7 @@ async function fetchOIDCConfiguration() {
 
 // Function to generate and verify PKCE challenge
 function generatePKCE() {
-  // Generate code verifier (random string between 43-128 chars)
+  // Generate code verifier
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
 
   // Generate code challenge (SHA256 hash of verifier, base64url encoded)
@@ -152,7 +163,7 @@ function generatePKCE() {
   return { codeVerifier, codeChallenge };
 }
 
-// Function to fetch JWKS (JSON Web Key Set)
+// Function to fetch JWKS
 async function fetchJWKS() {
   const config = await fetchOIDCConfiguration();
   const response = await axios.get(config.jwks_uri);
@@ -175,13 +186,7 @@ async function verifyIdToken(idToken) {
   }
 
   // Format key for JWT verification
-  // This is a simplified approach, in production you'd use a more robust method
-  // to convert JWK to PEM format
-  const publicKey = {
-    key: signingKey.n,
-    e: signingKey.e,
-    kty: signingKey.kty,
-  };
+  const publicKey = jwkToPem(signingKey);
 
   return new Promise((resolve, reject) => {
     jwt.verify(
@@ -241,7 +246,7 @@ app.get("/oidc/callback", async (req, res) => {
   const { code, state } = req.query;
   const { codeVerifier, state: storedState, nonce: storedNonce } = req.session;
 
-  // Verify state to prevent CSRF
+  // Verify state
   if (state !== storedState) {
     return res.status(403).send("Invalid state parameter");
   }
@@ -273,7 +278,7 @@ app.get("/oidc/callback", async (req, res) => {
     // Verify ID token
     const claims = await verifyIdToken(id_token);
 
-    // Verify nonce to prevent replay attacks
+    // Verify nonce
     if (claims.nonce !== storedNonce) {
       return res.status(403).send("Invalid nonce");
     }
