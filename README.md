@@ -88,7 +88,11 @@ To prevent replay attacks, LinkedIn includes a random nonce in the authorization
 
 Below is a standalone Node.js example using Express to handle OIDC login with Google, storing user data in a SQLite database.
 
-Please not that this is just example code and some things are missing or can be improved. I also on purpose did not use the library openid-client to make the process more visible. In production you would want to use openid-client or a similar library.
+Please note that this is just example code and some things are missing or can be improved.
+
+I also on purpose did not use the library openid-client so less things happen "behind the scenes" and the entire process is more visible. In production you would want to use openid-client or a similar library.
+
+Last note, I also don't enforce HTTPS here, which in production you really really should.
 
 ```javascript
 const express = require("express");
