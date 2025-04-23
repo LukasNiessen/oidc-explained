@@ -1,4 +1,4 @@
-# OpenID Connect (OIDC) Explained
+# OIDC Explained
 
 Let's say John is on LinkedIn and clicks _'Login with Google_'. He is now logged it at LinkedIn without that LinkedIn knows his password or really any sensitive data. Great! But how did that work?
 
