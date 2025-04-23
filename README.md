@@ -1,6 +1,6 @@
 # OIDC Explained
 
-Let's say John is on LinkedIn and clicks _'Login with Google_'. He is now logged in at LinkedIn without that LinkedIn knows his password or any other sensitive data. Great! But how did that work?
+Let's say John is on LinkedIn and clicks _'Login with Google_'. He is now logged in without that LinkedIn knows his password or any other sensitive data. Great! But how did that work?
 
 Via OpenID Connect (OIDC). This protocol builds on OAuth 2.0 and is the answer to above question.
 
