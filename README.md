@@ -4,8 +4,7 @@ Let's say John is on LinkedIn and clicks _'Login with Google_'. He is now logged
 
 Via OpenID Connect (OIDC). This protocol builds on OAuth 2.0 and is the answer to above question.
 
-I will provide a super short and simple summary, a more detailed one and even a code snippet. You should know what OAuth and JWTs (JSON Web Token) are because OIDC builds on them.
-If you're not familiar with OAuth, see my other guide [here][ref_oauth_repo].
+I will provide a super short and simple summary, a more detailed one and even a code snippet. You should know what OAuth and JWTs are because OIDC builds on them. If you're not familiar with OAuth, see my other guide [here][ref_oauth_repo].
 
 ## Super Short Summary
 
