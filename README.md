@@ -408,7 +408,16 @@ app.get("/logout", async (req, res) => {
 app.listen(3000, () => console.log("Server running on port 3000"));
 ```
 
-### License
+---
+
+## Feedback ⌨️😊
+
+Feel free to contribute by submitting a PR or creating an issue.  
+**If this was helpful, you can show support by giving this repository a star! 🌟**
+
+---
+
+## License
 
 MIT
 
